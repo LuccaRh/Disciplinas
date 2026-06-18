@@ -1,0 +1,247 @@
+% =============================================================================
+%  ES827 - Robótica Industrial
+%  Resumo: da Cinemática Inversa ao Planejamento de Trajetória
+%
+%  COMO COMPILAR (no terminal):
+%      pdflatex resumo_cinematica_trajetoria.tex
+%  (rode 2x para o sumário/índice ficarem corretos). Gera o PDF de mesmo nome.
+% =============================================================================
+\documentclass[11pt,a4paper]{article}
+
+% ----- Codificação e idioma -------------------------------------------------
+\usepackage[utf8]{inputenc}      % permite acentos direto no arquivo (á, ç, ã)
+\usepackage[T1]{fontenc}         % fontes que suportam acentos no PDF
+\usepackage[brazil]{babel}       % hifenização e termos em português
+
+% ----- Matemática -----------------------------------------------------------
+\usepackage{amsmath,amssymb}     % ambientes e símbolos matemáticos
+\usepackage{bm}                  % negrito em matemática (vetores/matrizes)
+
+% ----- Layout e cores -------------------------------------------------------
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{xcolor}
+\usepackage{tcolorbox}           % caixas coloridas para destaques
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+% Cores personalizadas
+\definecolor{azul}{HTML}{1F6FB2}
+\definecolor{verde}{HTML}{2E8B57}
+\definecolor{laranja}{HTML}{C0560E}
+\definecolor{vinho}{HTML}{8B1A1A}
+
+\hypersetup{colorlinks=true, linkcolor=azul, urlcolor=azul}
+
+% Comando-atalho: rótulo de aula em cinza
+\newcommand{\aula}[1]{{\small\textcolor{gray}{(#1)}}}
+
+\title{\textbf{ES827 — Robótica Industrial}\\[2pt]
+       \large Da Cinemática Inversa ao Planejamento de Trajetória}
+\author{Resumo de estudo}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{tcolorbox}[colback=gray!8,colframe=gray!40,title=Onde você parou]
+Logo após a última aula de cinemática inversa \aula{aula 9 — cinemática inversa
+iterativa}. Abaixo: primeiro um \textbf{resumo leve} do caminho até ali, depois
+a explicação da \textbf{parte seguinte} — planejamento de trajetória \aula{aula 10}.
+\end{tcolorbox}
+
+% =============================================================================
+\section*{\textcolor{laranja}{Parte 1 — Resumo do que veio antes (aulas 3 a 9)}}
+% =============================================================================
+
+\subsection*{1) Transformações homogêneas \aula{aula 3}}
+Toda pose (posição + orientação) de um corpo é uma matriz $4\times4$:
+\[
+T \;=\;
+\begin{bmatrix} \bm{R}_{3\times3} & \bm{p} \\[2pt] 0\;\;0\;\;0 & 1 \end{bmatrix},
+\qquad
+\begin{aligned}
+\bm{R} &= \text{rotação }(3\times3)\\
+\bm{p} &= \text{posição }(3\times1)
+\end{aligned}
+\]
+Compor movimentos = multiplicar matrizes: $\;T^{0}_{2} = T^{0}_{1}\,T^{1}_{2}$.
+
+\subsection*{2) Denavit--Hartenberg e graus de liberdade \aula{aula 4}}
+Cada junta $i$ é descrita por 4 parâmetros DH: $a_i,\ \alpha_i,\ d_i,\ \theta_i$
+(os três primeiros são geometria fixa; $\theta_i$ \emph{ou} $d_i$ é a variável da junta).
+\[
+T^{i-1}_{i} = \mathrm{Rot}(z,\theta_i)\,\mathrm{Trans}(z,d_i)\,
+              \mathrm{Trans}(x,a_i)\,\mathrm{Rot}(x,\alpha_i)
+\]
+
+\subsection*{3) Cinemática \textsc{direta} \aula{aulas 5--6}}
+\emph{Dadas} as juntas $q=(\theta_1,\theta_2,\dots)$, onde está a ferramenta?
+\[
+T^{0}_{n}(q) = T^{0}_{1}\,T^{1}_{2}\cdots T^{n-1}_{n}
+\]
+Sempre única e fácil: basta substituir os valores das juntas.
+
+\subsection*{4) Jacobiano e velocidades \aula{aula 7}}
+Relaciona a velocidade das juntas $\dot q$ com a do efetuador $\dot X$:
+\[
+\boxed{\;\dot X = J\,\dot q\;}\qquad
+J_{ij} = \frac{\partial X_i}{\partial q_j}
+\]
+\textbf{Singularidade}: quando $\det(J)=0$, $J$ não tem inversa — o robô
+``trava'' uma direção, ou exigiria velocidade/torque infinitos
+(tipos: punho, cotovelo, ombro).
+
+\subsection*{5) Cinemática \textsc{inversa} analítica \aula{aula 8}}
+Pergunta inversa: dada a pose desejada $X$, quais juntas $q$ a produzem?
+\[
+X\ (\text{desejado}) \;\longrightarrow\; q = ?
+\qquad\Bigl(\text{resolver } T^{0}_{n}(q)=X\Bigr)
+\]
+É o problema \textbf{difícil}: pode ter várias soluções (cotovelo p/ cima ou
+p/ baixo), nenhuma, ou infinitas. Resolve-se por geometria/álgebra.
+
+\subsection*{6) Cinemática \textsc{inversa iterativa} \aula{aula 9} \textmd{\textcolor{vinho}{$\leftarrow$ última aula antes de você se perder}}}
+Quando não dá para isolar $q$ na mão, resolve-se \emph{numericamente}
+(método de Newton aplicado à robótica):
+\begin{enumerate}[leftmargin=2.2em]
+  \item Chute inicial $q^{(0)}$.
+  \item Erro de pose: $\ \Delta X = X_{\text{des}} - f\!\left(q^{(k)}\right)$
+        \quad($f=$ cinemática direta).
+  \item Correção: $\ \Delta q = J^{-1}\!\left(q^{(k)}\right)\Delta X$.
+  \item Atualiza: $\ q^{(k+1)} = q^{(k)} + \Delta q$.
+  \item Repete até $\lVert \Delta X\rVert < \text{tolerância}$.
+\end{enumerate}
+Ideia: ``ande'' das juntas na direção que reduz o erro, usando $J^{-1}$ como
+bússola. Por isso singularidades ($\det J = 0$) quebram o método.
+
+% =============================================================================
+\section*{\textcolor{laranja}{Parte 2 — A parte seguinte: Planejamento de Trajetória \aula{aula 10}}}
+% =============================================================================
+
+\begin{tcolorbox}[colback=verde!6,colframe=verde!50]
+A cinemática inversa responde \emph{``quais juntas levam a um ponto''}.\\
+O planejamento de trajetória responde:
+\textbf{``como o robô se move, no tempo, de um ponto até outro?''}\\[3pt]
+Queremos uma função suave $q(t)$ que dê a posição de cada junta a cada
+instante, com velocidade e aceleração bem comportadas.
+\end{tcolorbox}
+
+\subsection*{A) Onde isso entra}
+$\text{Planejador de Tarefa} \to \boxed{\text{Gerador de Trajetória}} \to
+ \text{Controlador} \to \text{Robô}$.
+O gerador recebe os pontos-objetivo $X^{*}(t)$ e produz a referência $q^{*}(t)$.
+
+\subsection*{B) Dois espaços para planejar}
+\begin{itemize}[leftmargin=1.4em]
+  \item \textcolor{azul}{\textbf{Espaço Cartesiano}}: planeja o caminho do
+        efetuador no mundo $(x,y,z)$. Previsível (ex.: reta), mas exige IK a
+        cada ponto e pode cruzar singularidades.
+  \item \textcolor{vinho}{\textbf{Espaço das Juntas}}: planeja direto cada
+        $q_i(t)$. Simples e seguro (sem IK em tempo real); caminho cartesiano
+        menos previsível. \textbf{É o foco da aula.}
+\end{itemize}
+
+\subsection*{C) A ponte com a aula 9 — exemplo do SCARA}
+Usa-se a IK iterativa para achar as juntas de \emph{cada} ponto. Cinemática
+direta do SCARA:
+\[
+\begin{Bmatrix} X\\ Y\\ Z \end{Bmatrix}
+=
+\begin{Bmatrix}
+a_2\cos(\theta_1+\theta_2) + a_1\cos\theta_1\\
+a_2\operatorname{sen}(\theta_1+\theta_2) + a_1\operatorname{sen}\theta_1\\
+d_1 - d_3
+\end{Bmatrix}
+\]
+Constantes: $a_1,a_2,d_1$. \quad Variáveis: $\theta_1,\theta_2,d_3$.
+Calcula-se $J$ e $J^{-1}$ e itera-se ($\Delta q = J^{-1}\Delta X$).
+Cada pose-objetivo vira um vetor de juntas:
+
+\begin{center}
+\begin{tabular}{l|cccc}
+& Origem & Posição 1 & Posição 2 & Origem\\\hline
+$\theta_1\,[^\circ]$ & 90 & 76{,}95 & 78{,}28 & 90\\
+$\theta_2\,[^\circ]$ & $-90$ & $-56{,}25$ & $-110{,}92$ & $-90$\\
+$d_3\,[\text{m}]$ & 0{,}1 & 0{,}3 & 0{,}5 & 0{,}1\\
+\end{tabular}
+\end{center}
+
+\subsection*{D) Atribuir tempos aos movimentos}
+$0\text{s} \xrightarrow{1\text{s}} \text{Pos1} \xrightarrow{2\text{s}}
+ \text{Pos2} \xrightarrow{2\text{s}} \text{Origem}$ \;(em $t=0,1,3,5$\,s).
+Cada junta vira pontos $(t, q)$ a serem ligados por uma \emph{curva suave}:
+ligar por retas dá velocidade descontínua (trancos), então usamos polinômios.
+
+% -----------------------------------------------------------------------------
+\section*{\textcolor{laranja}{Trajetórias suaves — as 3 ferramentas}}
+% -----------------------------------------------------------------------------
+
+\subsection*{1) Polinômio \textsc{cúbico} (3ª ordem) — posição e velocidade}
+Tenho $(t_0,q_0)$ e $(t_f,q_f)$ e fixo as velocidades $v_0,v_f$ (em geral 0):
+\[
+q(t)=a_0+a_1 t+a_2 t^2+a_3 t^3, \qquad
+\dot q(t)=a_1+2a_2 t+3a_3 t^2.
+\]
+4 incógnitas $\Leftrightarrow$ 4 condições:
+\[
+\begin{bmatrix}
+1 & t_0 & t_0^2 & t_0^3\\
+0 & 1 & 2t_0 & 3t_0^2\\
+1 & t_f & t_f^2 & t_f^3\\
+0 & 1 & 2t_f & 3t_f^2
+\end{bmatrix}
+\begin{bmatrix} a_0\\a_1\\a_2\\a_3 \end{bmatrix}
+=
+\begin{bmatrix} q_0\\ v_0\\ q_f\\ v_f \end{bmatrix}
+\]
+\textit{Exemplo} ($\theta_1:10^\circ\!\to\!45^\circ$ em 1\,s, $v=0$):
+$\ \theta_1(t)=10+105t^2-70t^3$.
+
+\subsection*{2) Polinômio de \textsc{5ª ordem} (quíntico) — inclui aceleração}
+Fixa posição, velocidade \emph{e} aceleração nas duas pontas (6 condições):
+\[
+\begin{aligned}
+q(t)  &= a_0+a_1 t+a_2 t^2+a_3 t^3+a_4 t^4+a_5 t^5\\
+\dot q(t) &= a_1+2a_2 t+3a_3 t^2+4a_4 t^3+5a_5 t^4\\
+\ddot q(t) &= 2a_2+6a_3 t+12a_4 t^2+20a_5 t^3
+\end{aligned}
+\]
+\textit{Exemplo} ($\theta_2:10^\circ\!\to\!45^\circ$ em 1\,s, $v=a=0$):
+$\ \theta_2(t)=10+350t^3-525t^4+210t^5$.
+
+\subsection*{3) LSPB — segmento linear com concordância parabólica}
+Perfil de velocidade \textbf{trapezoidal}: acelera, cruzeiro a velocidade
+constante, desacelera. 3 trechos:
+\[
+q(t)=
+\begin{cases}
+q_0+\dfrac{\alpha}{2}\,t^2, & 0\le t\le t_b \quad(\text{parábola: rampa de }v)\\[8pt]
+\dfrac{q_0-q_f+V t_f}{2}+V t, & t_b\le t\le t_f-t_b \quad(\text{reta: }v\text{ const.})\\[8pt]
+q_f-\dfrac{\alpha t_f^2}{2}-\dfrac{\alpha}{2}\,t^2, & t_f-t_b< t\le t_f \quad(\text{parábola: freia})
+\end{cases}
+\]
+$\alpha=$ aceleração das pontas, \ $V=$ velocidade de cruzeiro, \ $t_b=$ tempo
+de mistura. Posição em ``S'', velocidade em trapézio, aceleração em degraus
+$(+\alpha,\,0,\,-\alpha)$.
+
+% -----------------------------------------------------------------------------
+\section*{\textcolor{laranja}{Resumão — qual usar?}}
+% -----------------------------------------------------------------------------
+\begin{tcolorbox}[colback=azul!5,colframe=azul!40]
+\begin{tabular}{ll}
+\textcolor{azul}{\textbf{Cúbico (3ª)}}   & fixa posição e velocidade. Mais simples.\\
+\textcolor{vinho}{\textbf{Quíntico (5ª)}} & fixa também a aceleração $\Rightarrow$ mais suave.\\
+\textcolor{verde}{\textbf{LSPB}}          & velocidade constante no meio (trapézio).\\
+\end{tabular}
+\end{tcolorbox}
+
+\noindent\textbf{Fluxo completo da aula 10:}
+pontos no espaço $\to$ \aula{IK iterativa, aula 9} $\to$ juntas $q$ de cada
+ponto $\to$ atribui tempos $\to$ \aula{cúbico / quíntico / LSPB} $\to$
+$q(t)$ suave. \checkmark
+
+\vspace{4pt}
+{\small\textcolor{gray}{Próximas aulas: incertezas (11), dinâmica (12--13),
+controle linear (14).}}
+
+\end{document}
