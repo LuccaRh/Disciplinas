@@ -1,0 +1,5 @@
+# temporários
+*.tmp
+*.swp
+__pycache__/
+.DS_Store
