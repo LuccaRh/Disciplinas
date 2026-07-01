@@ -1,0 +1,33 @@
+Código:
+  // All four are Vue refs – read with .value, write with .value = ...
+
+  // 1. Keep machineOn in sync with switchOn
+  watch(switchOn, (isSwitchOn) => {
+    machineOn.value = isSwitchOn;
+
+    if (isSwitchOn) {
+      // When the machine turns on, start the temperature rise timer
+      startTemperatureRise();
+    } else {
+      // When the machine turns off, stop the timer and reset temperature
+      resetTemperature();
+    }
+  });
+
+  // 2. Keep coolerOn in sync with tempLevel
+  watch(tempLevel, (currentTemp) => {
+    if (currentTemp === 'high') {
+      // Turn on the cooler when the temperature reaches maximum
+      coolerOn.value = true;
+    } else if (currentTemp === 'low') {
+      // Turn off the cooler when it cools back down to low
+      coolerOn.value = false;
+    }
+  });
+
+
+Explicação:
+O código faz duas verificações reativas, do botão ligar e do valor de temperatura
+Se o botão for mudado para True, é ativado a função startTemperatureRise(), que durante um tempo faz o valor da temperatura mudar de low para medium para high. Caso seja desligado, é ativado resetTemperature(), que volta para low.
+Ao mesmo tempo, o valor da machine acompanha o valor do botão.
+A outra verificação é feita com valor da temperatura. Caso fique em high, o valor do cooler vai para True.
