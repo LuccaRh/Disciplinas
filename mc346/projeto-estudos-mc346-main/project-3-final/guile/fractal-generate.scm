@@ -1,0 +1,121 @@
+;;; fractal-generate.scm — parser de equação + ponto de entrada `generate`
+(load "fractal-core.scm")
+(load "fractal-ifs.scm")
+(load "fractal-coastline.scm")
+
+;; ─── Parser mínimo ────────────────────────────────────────────────────────
+
+(define (parse-exponent s)
+  (let ((hat (string-contains s "^")))
+    (and hat
+         (let* ((rest  (substring s (+ hat 1)))
+                (plus  (string-contains rest "+"))
+                (minus (string-contains rest "-"))
+                (end   (or plus minus (string-length rest))))
+           (string->number (substring rest 0 end))))))
+
+(define (parse-expr str)
+  (let ((s (string-trim str)))
+    (cond
+      ((and (string-contains s "z^") (string-contains s "+c"))
+       (let ((n (parse-exponent s)))
+         (lambda (z c) (c+ (c-pow z n) c))))
+      ((and (string-contains s "z^") (string-contains s "-c"))
+       (let ((n (parse-exponent s)))
+         (lambda (z c) (c- (c-pow z n) c))))
+      ((string-contains s "z^")
+       (let ((n (parse-exponent s)))
+         (lambda (z c) (c-pow z n))))
+      ((string=? s "z*z+c")
+       (lambda (z c) (c+ (c* z z) c)))
+      (else (error "Equação não reconhecida" str)))))
+
+(define (parse-equation str)
+  (let* ((sides (string-split str #\=))
+         (rhs   (string-trim (cadr sides))))
+    (parse-expr rhs)))
+
+;; ─── Motor de escape ─────────────────────────────────────────────────────
+
+(define (iterate-equation f max-iter c)
+  (let loop ((z (make-c 0.0 0.0)) (i 0))
+    (cond ((= i max-iter) i)
+          ((> (c-abs z) 2.0) i)
+          (else (loop (f z c) (+ i 1))))))
+
+;; Scans a window of the complex plane, one c-value per pixel, and returns
+;; escape-time triples (px py iterations). The window is `center` ± half-width,
+;; where half-width = 200/zoom (so zoom 100 ≈ the classic full-set view).
+(define (generate-equation-grid fractal)
+  (let* ((eq-str   (get-field fractal 'equation))
+         (f        (parse-equation eq-str))
+         (max-iter (get-field fractal 'iterations))
+         (center   (get-field fractal 'center))
+         (cre0     (car center))
+         (cim0     (cadr center))
+         (zoom-val (get-field fractal 'zoom))
+         (half-w   (/ 200.0 zoom-val))
+         (res      (get-field fractal 'resolution))
+         (width    (car res))
+         (height   (cadr res))
+         (half-h   (* half-w (/ height width))))
+    (let loop-y ((py 0) (pts '()))
+      (if (= py height)
+          pts
+          (let ((im (+ (- cim0 half-h)
+                       (* (/ py (max 1 (- height 1))) (* 2 half-h)))))
+            (loop-y (+ py 1)
+                    (let loop-x ((px 0) (acc pts))
+                      (if (= px width)
+                          acc
+                          (let* ((re   (+ (- cre0 half-w)
+                                          (* (/ px (max 1 (- width 1))) (* 2 half-w))))
+                                 (iter (iterate-equation f max-iter (make-c re im))))
+                            (loop-x (+ px 1)
+                                    (cons (list px py iter) acc)))))))))))
+
+;; ─── Ponto de entrada ────────────────────────────────────────────────────
+
+(define (generate fractal)
+  (let ((eq-str        (get-field fractal 'equation))
+        (ifs-val       (get-field fractal 'ifs))
+        (coastline-val (get-field fractal 'coastline))
+        (iters         (get-field fractal 'iterations)))
+    (cond
+      ((not (eq? coastline-val #nil))
+       (generate-island coastline-val))
+      ((not (eq? ifs-val #nil))
+       (iterate-ifs fractal iters))
+      ((string? eq-str)
+       (generate-equation-grid fractal))
+      (else
+       (error "Fractal sem equation nem ifs"
+              (get-field fractal 'name))))))
+
+;; ─── Exporta pontos para CSV ──────────────────────────────────────────────
+
+(define (export-csv fractal filename)
+  (let ((result (generate fractal)))
+    (call-with-output-file filename
+      (lambda (port)
+        (display "x,y,type,value\n" port)
+        (define (write-pt x y label value)
+          (display x port)     (display "," port)
+          (display y port)     (display "," port)
+          (display label port) (display "," port)
+          (display value port) (newline port))
+        (define (write-pts pts label)
+          (for-each (lambda (p) (write-pt (car p) (cadr p) label "")) pts))
+        (define (write-escape pts)
+          (for-each (lambda (p) (write-pt (car p) (cadr p) "escape" (caddr p))) pts))
+        (cond
+          ;; generate-island returns (coast-points . decor-points)
+          ((and (pair? result) (pair? (car result)) (list? (caar result)))
+           (write-pts (car result) "coast")
+           (write-pts (cdr result) "decor"))
+          ;; generate-equation-grid returns a flat list of (px py iter) triples
+          ((and (pair? result) (pair? (car result)) (= (length (car result)) 3))
+           (write-escape result))
+          ;; everything else (ifs) returns a flat list of (x y) points
+          (else
+           (write-pts result "point")))))))

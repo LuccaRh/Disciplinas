@@ -1,0 +1,7 @@
+services:
+  fractaldsl:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ./output:/fractal/output

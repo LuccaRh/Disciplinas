@@ -1,0 +1,298 @@
+# DSL `FractalDSL`
+
+## Descrição Resumida da DSL
+
+Fractais são estruturas geométricas geradas por processos iterativos simples que produzem padrões complexos e auto-semelhantes.  
+Esses fenômenos foram amplamente popularizados pelo trabalho de Benoît Mandelbrot no estudo do conjunto de Mandelbrot.  
+A DSL proposta oferece uma forma declarativa e concisa de descrever regras iterativas e parâmetros necessários para gerar e visualizar fractais.
+
+Embora existam diversas ferramentas para geração e exploração de fractais, como Ultra Fractal, XaoS e Fractint, essas aplicações oferecem interfaces específicas ou dependem de configurações detalhadas.  
+Uma DSL permite representar as regras matemáticas e transformações que geram os fractais, fornecendo uma forma mais estruturada e legível de descrever esses sistemas.
+
+Ao formalizar a descrição de sistemas iterativos para geração de fractais, a linguagem pode servir como ferramenta de experimentação e ensino em matemática computacional e dinâmica não linear.  
+Isso possibilita explorar diferentes configurações de equações e transformações de forma clara, facilitando a compreensão de como regras simples podem produzir comportamentos complexos.
+
+## Slides
+
+https://docs.google.com/presentation/d/1PEGOMFt4rmjglXANx2P-HdXT6lAElCCy9IkIvIgMZow/edit?usp=sharing
+
+## Sintaxe da Linguagem na Forma de Tutorial
+
+Esta linguagem permite a definição, configuração e renderização de fractais através de uma sintaxe declarativa simples.
+
+### Definição de um Fractal
+
+A construção básica utiliza a palavra-chave `fractal`, seguida pelo nome e um bloco de parâmetros.
+
+```rust
+fractal Mandelbrot {
+    center (-0.5, 0)
+    zoom 200
+    iterations 500
+}
+```
+
+#### Parâmetros:
+
+* **fractal**: Inicia a definição de um fractal.
+* **center**: Define o ponto central da região do plano complexo que será visualizada.
+* **zoom**: Controla o nível de ampliação da imagem.
+* **iterations**: Define o número máximo de iterações utilizadas no cálculo.
+
+Esses parâmetros determinam a região e o nível de detalhe da visualização do fractal.
+
+### Definição de equações iterativas
+
+A linguagem permite especificar explicitamente a equação iterativa responsável pela geração do fractal.
+
+```rust
+fractal Julia {
+    equation z = z^2 + c
+    constant c = -0.4
+    iterations 500
+}
+```
+
+A linguagem suporta duas formas de representar números complexos nas equações:  
+
+1. Notação de Par Ordenado: (real, imaginario) -> Ex: constant c = (0, -0.8). 
+2. Notação Algébrica: ni -> Ex: constant c = 0.3 + 0.5i. 
+
+#### Parâmetros da Equação:
+
+* **equation**: Define a regra iterativa aplicada repetidamente.
+* **constant**: Define parâmetros utilizados na equação.
+* **iterations**: Especifica quantas vezes a equação será aplicada durante o cálculo.
+
+### Configuração de Renderização
+
+A linguagem também permite definir parâmetros relacionados à visualização da imagem gerada.
+
+```rust
+render {
+    resolution 800 800
+    color gradient
+}
+```
+
+#### Parâmetros da renderização:
+
+* **resolution**: Define o tamanho da imagem gerada.
+* **color**: Especifica o esquema de cores utilizado na visualização.
+
+### Geração do Fractal
+
+Após definir o fractal e os parâmetros de renderização, a imagem pode ser gerada com o comando `generate`.
+
+```rust
+generate Mandelbrot
+```
+
+Esse comando executa o processo iterativo definido e produz a visualização.
+
+## Gramática da Linguagem
+
+### `FractalLexer.g4`
+
+#### Tokens:
+
+* **Palavras-chave da linguagem**: `fractal`, `equation`, `iterations`, `render`, `generate`.
+* **Operadores aritméticos**: `+`, `-`, `*`, `/`, `^`.
+* **Símbolos estruturais**: `{}`, `[]`, `,`, `=`.
+* **Números**: `NUMBER`.
+* **Identificadores**: `IDENT`.
+
+```
+lexer grammar FractalLexer;
+
+FRACTAL    : 'fractal' ;
+EQUATION   : 'equation' ;
+CONSTANT   : 'constant' ;
+ITERATIONS : 'iterations' ;
+CENTER     : 'center' ;
+ZOOM       : 'zoom' ;
+RENDER     : 'render' ;
+RESOLUTION : 'resolution' ;
+COLOR      : 'color' ;
+GENERATE   : 'generate' ;
+Z_VAR      : 'z' ; 
+C_VAR      : 'c' ; 
+I_UNIT     : 'i' ;
+
+PLUS  : '+' ;
+MINUS : '-' ;
+STAR  : '*' ;
+SLASH : '/' ;
+POW   : '^' ;
+
+LPAREN : '(' ;
+RPAREN : ')' ;
+LBRACE : '{' ;
+RBRACE : '}' ;
+COMMA  : ',' ;
+EQ     : '=' ;
+
+NUMBER : [0-9]+ ('.' [0-9]+)? ;
+IDENT  : [a-zA-Z][a-zA-Z0-9]* ;
+
+
+WS : [ \t\r\n]+ -> skip ;
+```
+
+### `FractalParser.g4`
+
+Estrutura
+* Define-se o fractal.
+* Opcionalmente, inclui-se o bloco de renderização.
+* Comando de geração.
+
+
+```
+parser grammar FractalParser;
+
+options { tokenVocab=FractalLexer; }
+
+program
+    : fractalDef renderBlock? generateStmt EOF
+    ;
+
+fractalDef
+    : FRACTAL IDENT LBRACE fractalBody RBRACE
+    ;
+
+fractalBody
+    : (centerStmt
+      | zoomStmt
+      | equationStmt
+      | constantStmt
+      | iterationStmt
+      )*
+    ;
+
+centerStmt
+    : CENTER LPAREN expr COMMA expr RPAREN
+    ;
+
+zoomStmt
+    : ZOOM NUMBER
+    ;
+
+equationStmt
+    : EQUATION IDENT EQ expr
+    ;
+
+constantStmt
+    : CONSTANT IDENT EQ expr
+    ;
+
+iterationStmt
+    : ITERATIONS NUMBER
+    ;
+
+renderBlock
+    : RENDER LBRACE resolutionStmt colorStmt? RBRACE
+    ;
+
+resolutionStmt
+    : RESOLUTION NUMBER NUMBER
+    ;
+
+colorStmt
+    : COLOR IDENT
+    ;
+
+generateStmt
+    : GENERATE IDENT
+    ;
+
+expr
+    : LPAREN expr RPAREN              # Parenteses
+    | LPAREN expr COMMA expr RPAREN     # NumeroComplexo, Aceita (0, -0.5)
+    | expr POW expr                   # Potencia
+    | expr (STAR | SLASH) expr         # MultiplicacaoDivisao
+    | expr (PLUS | MINUS) expr         # SomaSubtracao
+    | NUMBER I_UNIT                    # Imaginario Puro, Aceita 0.5i
+    | NUMBER                           # Real
+    | Z_VAR                             
+    | C_VAR                             
+    | IDENT                             # OutrosIdentificadores
+    ;
+```
+
+## Exemplos Selecionados
+
+### Conjunto de Mandelbrot
+```
+fractal Mandelbrot {
+    equation z = z^2 + c
+    iterations 500
+    center (-0.5, 0)
+    zoom 200
+}
+render {
+    resolution 800 800
+    color gradient
+}
+generate Mandelbrot
+```
+#### Resultado Esperado
+Geração da visualização do Conjunto de Mandelbrot com 500 iterações e resolução 800x800 pixels.
+
+### Conjunto de Julia
+```
+fractal Julia {
+    equation z = z^2 + c
+    constant c = -0.4
+    iterations 500
+    center (0, 0)
+    zoom 150
+}
+render {
+    resolution 800 800
+    color gradient
+}
+generate Julia
+```
+#### Resultado Esperado
+Visualização do conjunto de Julia correspondente ao valor da constante especificada.
+
+### Fractal Cúbico
+```
+fractal Cubic {
+    equation z = z^3 + c
+    constant c = 0.3
+    iterations 400
+    center (0, 0)
+    zoom 180
+}
+generate Cubic
+```
+#### Resultado Esperado
+Visualização de um fractal gerado pela equação cúbica.
+Há um aumento na complexidade dos padrões devido ao acréscimo na ordem polinomial.
+
+### Maior Zoom
+```
+fractal HigherZoom {
+    equation z = z^2 + c
+    iterations 1000
+    center (-0.75, 0.1)
+    zoom 500
+}
+
+generate HigherZoom
+```
+#### Resultado Esperado
+Visualização de uma região ampliada do conjunto de Mandelbrot.
+Possui maior nível de detalhe devido ao aumento do número de iterações.
+
+# Referências Bibliográficas
+
+
+> GLEICK, James. Chaos: making a new science. New York: Viking, 1987.
+
+> POINCARÉ, Henri. Sur le problème des trois corps et les équations de la dynamique. Acta Mathematica, Stockholm, v. 13, p. 1–270, 1890.
+
+> LORENZ, Edward N. Deterministic nonperiodic flow. Journal of the Atmospheric Sciences, Boston, v. 20, n. 2, p. 130–141, 1963.
+
+> MANDELBROT, Benoît B. Les objets fractals: forme, hasard et dimension. Paris: Flammarion, 1975.
